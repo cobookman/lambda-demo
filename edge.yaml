@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Deploy Lambda at the AWS Region
+
+Resources:
+  CFDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: 'true'
+        Comment: 'CI/CD for Lambda@Edge'
+        Origins:
+          -
+            Id: MyOrigin
+            DomainName: aws.amazon.com
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: match-viewer
+        DefaultCacheBehavior:
+          TargetOriginId: MyOrigin
+          LambdaFunctionAssociations:
+            -
+              EventType: viewer-request
+              LambdaFunctionARN: !Ref LambdaEdgeFunction.Version
+          ForwardedValues:
+            QueryString: 'true'
+            Headers:
+             - Origin
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: allow-all
+
+  LambdaEdgeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role: !GetAtt LambdaEdgeFunctionRole.Arn
+      Runtime: python3.7
+      Handler: index.handler
+      Timeout: 5
+      AutoPublishAlias: live 
+      InlineCode: |
+        import json
+        import zlib
+        import base64
+        def handler(event, context):
+            body = '<html><body><h3>%s Event:</h3><pre>%s</pre></body></html>' % (
+                    context.invoked_function_arn,
+                    json.dumps(event, sort_keys=True, indent=4))
+            bodyGzip = zlib.compress(body.encode('utf-8'))
+            bodyB64 = base64.b64encode(bodyGzip).decode('utf-8')
+            return {
+                'status': '200',
+                'statusDescription': 'OK',
+                'body': bodyB64,
+                'bodyEncoding': 'base64',
+                'headers': {
+                    'content-type': [{'key': 'Content-Type', 'value': 'text/html; charset=utf-8'}],
+                    'content-encoding': [{'key': 'Content-Encoding', 'value': 'gzip'}],
+                },
+            }
+
+  LambdaEdgeFunctionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "AllowLambdaServiceToAssumeRole"
+            Effect: "Allow"
+            Action: 
+              - "sts:AssumeRole"
+            Principal:
+              Service: 
+                - "lambda.amazonaws.com"
+                - "edgelambda.amazonaws.com"
+
+Outputs:
+  LambdaEdgeFunctionVersion: 
+    Description: Lambda@Edge Function ARN with Version
+    Value: !Ref LambdaEdgeFunction.Version
+
+  CFDistribution: 
+    Description: Cloudfront Distribution Domain Name
+    Value: !GetAtt CFDistribution.DomainName
+

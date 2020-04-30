@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy Lambda at the AWS Region
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Events:
+        ApiEvent:
+          Type: HttpApi
+      Handler: index.handler
+      InlineCode: |
+        import json
+        def handler(event, context):
+            return {
+                'body': '<html><body><h3>%s Event:</h3><pre>%s</pre></body></html>' % (
+                    context.invoked_function_arn,
+                    json.dumps(event, sort_keys=True, indent=4)),
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'text/html',
+                    'Access-Control-Allow-Origin': '*',
+                }
+            }
+      Runtime: python3.7
+Transform: AWS::Serverless-2016-10-31
+
