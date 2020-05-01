@@ -10,9 +10,11 @@ Resources:
       Handler: index.handler
       InlineCode: |
         import json
+        from datetime import datetime
         def handler(event, context):
             return {
-                'body': '<html><body><h3>%s Event:</h3><pre>%s</pre></body></html>' % (
+                'body': '<html><body><h3>%s</h3><h3>%s Event:</h3><pre>%s</pre></body></html>' % (
+                    datetime.now().isoformat(),
                     context.invoked_function_arn,
                     json.dumps(event, sort_keys=True, indent=4)),
                 'statusCode': 200,
