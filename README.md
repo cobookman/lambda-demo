@@ -2,6 +2,14 @@
 
 The git repo includes 2 Cloudformation templates: `edge.yaml` and `region.yaml`.
 
+## Test existing deployment
+
+You can test my already deployed endpoint with curl. For simplicity to see how it chooses between the two lambda endpoints run the following CLI command which extracts the `[Content-Location](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Location)` HTTP Header:
+
+```bash
+$ curl -I http://d124vwf0s3f67.cloudfront.net/ | grep Content-Location
+```
+
 ## Setup
 
 1. In two or more AWS regions of your choice, open CloudFormation, and upload the `region.yaml` script. Choose default settings and deploy. Make sure to log the final lambda endpoint URL.
